@@ -5,3 +5,4 @@ boto3==1.21.23
 pydub==0.25.1
 urllib3==1.26.9
 imageio-ffmpeg==0.4.5
+spleeter==2.3.0
