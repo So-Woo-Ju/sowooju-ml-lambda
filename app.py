@@ -10,6 +10,7 @@ import tensorflow as tf
 import tensorflow_io as tfio
 import boto3
 import os
+import spleeter
 
 s3 = boto3.client('s3')
 filter_classifier_model = tf.saved_model.load('classifier-yamnet')
@@ -106,7 +107,7 @@ def sound_with_json(audio_file, json):
 
 def make_transcript(audio_file_path):
 
-  audio = AudioSegment.from_file(audio_file_path, format="mp3")
+  audio = AudioSegment.from_file(audio_file_path)
   normalized_audio = match_target_amplitude(audio, -20.0)
   intervals_jsons = create_json(normalized_audio) # 구간, 태그 정보를 담은 Json 형태의 Array 반환
   transcript_json = sound_with_json(normalized_audio, intervals_jsons) # JSON을 가지고 STT한 결과 추가
@@ -122,8 +123,12 @@ def lambda_handler(event, context):
     try:
         s3.download_file(bucket, key, '/tmp/temp.mp3')
         src = "/tmp/temp.mp3"
-            
-        result_json = json.dumps(make_transcript(src))
+        
+        spleeter separate -p spleeter:2stems -o output src
+        accompanimentSrc = 'output/temp/accompaniment.wav'
+        # vocalsSrc = 
+        
+        result_json = json.dumps(make_transcript(accompanimentSrc))
         return result_json
     except Exception as e:
         print(e)
