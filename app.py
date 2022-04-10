@@ -121,15 +121,22 @@ def lambda_handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'], encoding='utf-8')
     try:
-        s3.download_file(bucket, key, '/tmp/temp.mp3')
-        src = "/tmp/temp.mp3"
-        
-        spleeter separate -p spleeter:2stems -o output src
-        accompanimentSrc = 'output/temp/accompaniment.wav'
+      os.environ[ 'NUMBA_CACHE_DIR' ] = '/tmp/'
+      s3.download_file(bucket, key, '/tmp/temp.mp3')
+
+      print(os.getcwd())
+      os.chdir('/tmp')
+      print(os.getcwd())
+      print(os.listdir())
+      os.system("spleeter separate -p spleeter:2stems -o output temp.mp3")
+      print("스프리터 완료")
+      print(os.getcwd())
+      print(os.listdir())
+      accompanimentSrc = 'output/temp/accompaniment.wav'
         # vocalsSrc = 
-        
-        result_json = json.dumps(make_transcript(accompanimentSrc))
-        return result_json
+                
+      result_json = json.dumps(make_transcript(accompanimentSrc))
+      return result_json
     except Exception as e:
-        print(e)
-        raise e
+      print(e)
+      raise e

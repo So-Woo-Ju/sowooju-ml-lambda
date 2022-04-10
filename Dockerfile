@@ -23,7 +23,11 @@ RUN yum install -y tar gzip xz zlib unzip freetype-devel \
     which \
     xorg-x11-server-Xvfb \
     zlib-devel \
+    ffmpeg libsndfile \
     && yum clean all
+
+RUN pip install musdb museval
+RUN pip install spleeter
 
 # ffmepg 파일 복사
 COPY ffmpeg.tar.xz .
