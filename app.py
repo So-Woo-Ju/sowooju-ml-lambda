@@ -10,7 +10,9 @@ import tensorflow as tf
 import tensorflow_io as tfio
 import boto3
 import os
+
 import spleeter
+from spleeter.separator import Separator
 
 s3 = boto3.client('s3')
 filter_classifier_model = tf.saved_model.load('classifier-yamnet')
@@ -113,7 +115,6 @@ def make_transcript(audio_file_path):
   transcript_json = sound_with_json(normalized_audio, intervals_jsons) # JSON을 가지고 STT한 결과 추가
   return transcript_json
 
-
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
 def lambda_handler(event, context):
 
@@ -121,19 +122,21 @@ def lambda_handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'], encoding='utf-8')
     try:
-      os.environ[ 'NUMBA_CACHE_DIR' ] = '/tmp/'
       s3.download_file(bucket, key, '/tmp/temp.mp3')
 
-      print(os.getcwd())
+      # 파일 저장이 가능한 폴더로 이동
       os.chdir('/tmp')
-      print(os.getcwd())
-      print(os.listdir())
-      os.system("spleeter separate -p spleeter:2stems -o output temp.mp3")
-      print("스프리터 완료")
-      print(os.getcwd())
-      print(os.listdir())
-      accompanimentSrc = 'output/temp/accompaniment.wav'
-        # vocalsSrc = 
+      separator = Separator("spleeter:2stems") 
+      separator.separate_to_file("temp.mp3", "")
+
+      # 원래 폴더로 이동
+      os.chdir('/var/task')
+      
+      # spleeter 결과 폴더
+      # 배경음악 파일
+      accompanimentSrc = '/tmp/temp/accompaniment.wav'
+      # 사람 음성 파일
+      vocalsSrc = '/tmp/temp/vocals.wav'
                 
       result_json = json.dumps(make_transcript(accompanimentSrc))
       return result_json
