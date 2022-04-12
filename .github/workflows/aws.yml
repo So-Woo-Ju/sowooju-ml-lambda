@@ -56,5 +56,5 @@ jobs:
         IMAGE_URI: ${{ steps.build-outofthebox-image.outputs.image }}
 
       run: |
-        aws lambda update-function-code --function-name arn:aws:lambda:ap-northeast-2:633918783977:function:test --image-uri $IMAGE_URI
+        aws lambda update-function-code --function-name arn:aws:lambda:ap-northeast-2:633918783977:function:function-outofthebox-image --image-uri $IMAGE_URI
 
