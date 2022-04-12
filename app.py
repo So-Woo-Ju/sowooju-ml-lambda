@@ -127,6 +127,7 @@ def lambda_handler(event, context):
       userFileName = key.split('.')[0]
       s3.download_file(bucket, key, '/tmp/' + userFile)
 
+      # 배경음악 분류 관련 스크립트
       # 파일 저장이 가능한 폴더로 이동
       os.chdir('/tmp')
       separator = Separator("spleeter:2stems") 
@@ -139,13 +140,16 @@ def lambda_handler(event, context):
       # 배경음악 파일                                                  
       accompanimentSrc = '/tmp/' + userFileName + '/accompaniment.wav'
       # 사람 음성 파일
-      vocalsSrc = '/tmp/' + userFileName + '/vocals.wav'
+      #vocalsSrc = '/tmp/' + userFileName + '/vocals.wav'
       result_json = json.dumps(make_transcript(accompanimentSrc, userFileName))
 
       os.remove('/tmp/' + userFile)
       os.remove(accompanimentSrc)
-      os.remove(vocalsSrc)
+      #os.remove(vocalsSrc)
       os.rmdir('/tmp/' + userFileName)
+
+      # 사람 대사 관련 스크립트
+      s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
 
       return result_json
     except Exception as e:
