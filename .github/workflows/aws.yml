@@ -50,11 +50,11 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-    - name: Update aws outofthebox lamba function code
-      id: update-outofthebox-function-code
-      env:
-        IMAGE_URI: ${{ steps.build-outofthebox-image.outputs.image }}
+    # - name: Update aws outofthebox lamba function code
+    #   id: update-outofthebox-function-code
+    #   env:
+    #     IMAGE_URI: ${{ steps.build-outofthebox-image.outputs.image }}
 
-      run: |
-        aws lambda update-function-code --function-name arn:aws:lambda:ap-northeast-2:633918783977:function:function-outofthebox-image --image-uri $IMAGE_URI
+    #   run: |
+    #     aws lambda update-function-code --function-name arn:aws:lambda:ap-northeast-2:633918783977:function:function-outofthebox-image --image-uri $IMAGE_URI
 
