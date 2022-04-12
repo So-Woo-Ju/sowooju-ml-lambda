@@ -40,7 +40,7 @@ jobs:
       id: build-outofthebox-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: sowooju-lambda-tensorflow
+        ECR_REPOSITORY: so-woo-ju-lambda
         IMAGE_TAG: latest
       run: |
         # Build a docker container and
@@ -50,11 +50,11 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-    # - name: Update aws outofthebox lamba function code
-    #   id: update-outofthebox-function-code
-    #   env:
-    #     IMAGE_URI: ${{ steps.build-outofthebox-image.outputs.image }}
+    - name: Update aws outofthebox lamba function code
+      id: update-outofthebox-function-code
+      env:
+        IMAGE_URI: ${{ steps.build-outofthebox-image.outputs.image }}
 
-    #   run: |
-    #     aws lambda update-function-code --function-name arn:aws:lambda:ap-northeast-2:633918783977:function:function-outofthebox-image --image-uri $IMAGE_URI
+      run: |
+        aws lambda update-function-code --function-name arn:aws:lambda:ap-northeast-2:633918783977:function:lamda-transcript-so-woo-ju --image-uri $IMAGE_URI
 
