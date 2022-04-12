@@ -151,3 +151,48 @@ def lambda_handler(event, context):
     except Exception as e:
       print(e)
       raise e
+
+
+class ClovaSpeechClient:
+    # Clova Speech invoke URL
+    invoke_url = 'https://clovaspeech-gw.ncloud.com/external/v1/2067/e674e5b8c4d0d15be784aa0506a742551ef75e0efc0cb9455768359455b68e55'
+
+    # Clova Speech secret key
+    secret = '1896753210a444da916a1f2c07e07beb'
+
+    def req_url(self, url, language, completion, callback=None, userdata=None, forbiddens=None, boostings=None, sttEnable=True,
+                wordAlignment=True, fullText=True, script='', diarization=None, keywordExtraction=None, groupByAudio=False):
+        # 호출 예시
+        # ClovaSpeechClient().req_url("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", "ko-KR", "sync")
+
+        request_body = {
+            'url': url, 
+            #url 넣어줄때 s3 접근 가능 url 을 넣어줄 것
+            # res = s3_client.list_objects_v2(Bucket=bucket, Prefix=path, MaxKeys=1)
+            # 'Contents' in res
+            # json_value = json.dumps(json.load(res['Body']))
+            'language': 'language',
+            # 'language': 'ko-KR',
+            # 'language': 'en-US',
+            'completion': completion,
+            'callback': callback,
+            'userdata': userdata,
+            'sttEnable': sttEnable,
+            'wordAlignment': wordAlignment,
+            'fullText': fullText,
+            'script': script,
+            'forbiddens': forbiddens,
+            'boostings': boostings,
+            'diarization': diarization,
+            'keywordExtraction': keywordExtraction,
+            'groupByAudio': groupByAudio,
+        }
+        headers = {
+            'Accept': 'application/json;UTF-8',
+            'Content-Type': 'application/json;UTF-8',
+            'X-CLOVASPEECH-API-KEY': self.secret
+        }
+        res = requests.post(headers=headers,
+                            url=self.invoke_url + '/recognizer/url',
+                            data=json.dumps(request_body).encode('UTF-8'))
+        return res.text
