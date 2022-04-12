@@ -35,16 +35,17 @@ def load_wav_16k_mono(filename):
     return wav
 
 # 추임새 종류 판별
-def predict_filter_type(audio_file):
+def predict_filter_type(audio_file, fileName):
   # 클래스 분류를 위한 임시 음성 파일 생성
-  audio_file.export("/tmp/tmp.wav", format="wav")
+  userTempFileSrc = "/tmp/" + fileName + "-temp.wav"
+  audio_file.export(userTempFileSrc, format="wav")
 
-  ## 경로 재설정 필요
-  testing_wav_data = load_wav_16k_mono("/tmp/tmp.wav")
+  testing_wav_data = load_wav_16k_mono(userTempFileSrc)
 
   my_classes = ['engine', 'breathing', 'dog', 'laughing', 'background_sound']
 
   reloaded_results = filter_classifier_model(testing_wav_data)
+  os.remove(userTempFileSrc)
 
   return my_classes[tf.argmax(reloaded_results)]
 
@@ -76,7 +77,7 @@ def create_json(audio_file):
 
   return intervals_jsons
 
-def sound_with_json(audio_file, json):
+def sound_with_json(audio_file, json, fileName):
   nonsilent_json = []
   for j in json:
     if (j['tag'] == '비침묵'):
@@ -96,7 +97,7 @@ def sound_with_json(audio_file, json):
   category = []
   for idx, json in enumerate(nonsilent_json):
     cut_audio = audio_file[json['start']*1000:json['end']*1000]
-    predict = predict_filter_type(cut_audio)
+    predict = predict_filter_type(cut_audio, fileName)
     category.append(predict)
 
   for idx, p in enumerate(category):
@@ -107,12 +108,12 @@ def sound_with_json(audio_file, json):
 
   return {"결과":nonsilent_json}
 
-def make_transcript(audio_file_path):
+def make_transcript(audio_file_path, fileName):
 
   audio = AudioSegment.from_file(audio_file_path)
   normalized_audio = match_target_amplitude(audio, -20.0)
   intervals_jsons = create_json(normalized_audio) # 구간, 태그 정보를 담은 Json 형태의 Array 반환
-  transcript_json = sound_with_json(normalized_audio, intervals_jsons) # JSON을 가지고 STT한 결과 추가
+  transcript_json = sound_with_json(normalized_audio, intervals_jsons, fileName) # JSON을 가지고 STT한 결과 추가
   return transcript_json
 
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
@@ -122,23 +123,30 @@ def lambda_handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'], encoding='utf-8')
     try:
-      s3.download_file(bucket, key, '/tmp/temp.mp3')
+      userFile = key
+      userFileName = key.split('.')[0]
+      s3.download_file(bucket, key, '/tmp/' + userFile)
 
       # 파일 저장이 가능한 폴더로 이동
       os.chdir('/tmp')
       separator = Separator("spleeter:2stems") 
-      separator.separate_to_file("temp.mp3", "")
+      separator.separate_to_file(userFile, "")
 
       # 원래 폴더로 이동
       os.chdir('/var/task')
       
       # spleeter 결과 폴더
-      # 배경음악 파일
-      accompanimentSrc = '/tmp/temp/accompaniment.wav'
+      # 배경음악 파일                                                  
+      accompanimentSrc = '/tmp/' + userFileName + '/accompaniment.wav'
       # 사람 음성 파일
-      vocalsSrc = '/tmp/temp/vocals.wav'
-                
-      result_json = json.dumps(make_transcript(accompanimentSrc))
+      vocalsSrc = '/tmp/' + userFileName + '/vocals.wav'
+      result_json = json.dumps(make_transcript(accompanimentSrc, userFileName))
+
+      os.remove('/tmp/' + userFile)
+      os.remove(accompanimentSrc)
+      os.remove(vocalsSrc)
+      os.rmdir('/tmp/' + userFileName)
+
       return result_json
     except Exception as e:
       print(e)
