@@ -5,6 +5,7 @@ from pydub.silence import detect_nonsilent
 import ffmpeg
 import json
 import urllib.parse
+import requests
 
 import tensorflow as tf
 import tensorflow_io as tfio
@@ -150,7 +151,8 @@ def lambda_handler(event, context):
 
       # 사람 대사 관련 스크립트
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
-
+      text = ClovaSpeechClient().req_url(s3VideoUrl, "ko-KR", "sync")
+      print(text)
       return result_json
     except Exception as e:
       print(e)
