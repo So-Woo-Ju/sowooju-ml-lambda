@@ -117,6 +117,8 @@ def make_transcript(audio_file_path, fileName):
   transcript_json = sound_with_json(normalized_audio, intervals_jsons, fileName) # JSON을 가지고 STT한 결과 추가
   return transcript_json
 
+
+
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
 def lambda_handler(event, context):
 
@@ -151,21 +153,20 @@ def lambda_handler(event, context):
 
       # 사람 대사 관련 스크립트
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
+      print(s3VideoUrl)
       text = ClovaSpeechClient().req_url(s3VideoUrl, "ko-KR", "sync")
-      print(text)
+      # 예시
+      # text = ClovaSpeechClient().req_url('http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', "ko-KR", "sync")
+      dict = json.loads(text)
+      print(dict)
       return result_json
+      
     except Exception as e:
       print(e)
       raise e
 
 
 class ClovaSpeechClient:
-    # Clova Speech invoke URL
-    invoke_url = 'https://clovaspeech-gw.ncloud.com/external/v1/2067/e674e5b8c4d0d15be784aa0506a742551ef75e0efc0cb9455768359455b68e55'
-
-    # Clova Speech secret key
-    secret = '1896753210a444da916a1f2c07e07beb'
-
     def req_url(self, url, language, completion, callback=None, userdata=None, forbiddens=None, boostings=None, sttEnable=True,
                 wordAlignment=True, fullText=True, script='', diarization=None, keywordExtraction=None, groupByAudio=False):
         # 호출 예시
