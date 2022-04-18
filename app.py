@@ -167,6 +167,11 @@ def lambda_handler(event, context):
 
 
 class ClovaSpeechClient:
+      # Clova Speech invoke URL
+    invoke_url = os.environ['invoke_url']
+
+    # Clova Speech secret key
+    secret = os.environ['secret']
     def req_url(self, url, language, completion, callback=None, userdata=None, forbiddens=None, boostings=None, sttEnable=True,
                 wordAlignment=True, fullText=True, script='', diarization=None, keywordExtraction=None, groupByAudio=False):
         # 호출 예시
