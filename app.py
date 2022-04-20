@@ -123,101 +123,112 @@ def sound_with_json(audio_file, json, fileName):
   return final_json
 
 def make_transcript(audio_file_path, fileName):
-
   audio = AudioSegment.from_file(audio_file_path)
   normalized_audio = match_target_amplitude(audio, -20.0)
   intervals_jsons = create_json(normalized_audio) # 구간, 태그 정보를 담은 Json 형태의 Array 반환
   transcript_json = sound_with_json(normalized_audio, intervals_jsons, fileName) # JSON을 가지고 STT한 결과 추가
   return transcript_json
 
+def invoke_clova(s3VideoUrl):
+  text = ClovaSpeechClient().req_url(s3VideoUrl, language="ko-KR", completion="sync")
+  return json.loads(text)
+
+def preprocess_clova(clova):
+  clova_timeline = []
+  for i in clova['segments']:
+    start = i['start'] * 0.001
+    end = i['end'] * 0.001
+    text = i['text']
+    clova_timeline.append({'start': start, 'end': end, 'tag' : text})
+  return clova_timeline
+
+
+def make_timeline(background_timeline, clova_timeline):
+  result_timeline_json = []
+  background_timeline_idx = 0
+  clova_timeline_idx = 0
+  start = 0
+  end = 0
+  while(True):
+    text = ''
+    if(background_timeline[background_timeline_idx]['start'] < clova_timeline[clova_timeline_idx]['start']):
+      start = background_timeline[background_timeline_idx]['start']
+    else:
+      start = clova_timeline[clova_timeline_idx]['start']
+
+    if(background_timeline[background_timeline_idx]['end'] < clova_timeline[clova_timeline_idx]['end']):
+      end = background_timeline[background_timeline_idx]['end']
+      text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
+      background_timeline_idx = background_timeline_idx + 1
+    else:
+      end = clova_timeline[clova_timeline_idx]['end']
+      text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
+      clova_timeline_idx = clova_timeline_idx + 1
+
+    result_timeline_json.append({'start': start, 'end': end, 'text' : text})
+    if(background_timeline_idx == len(background_timeline) or clova_timeline_idx == len(clova_timeline)):
+      break
+
+  if(background_timeline_idx < len(background_timeline)):
+    for i in range(background_timeline_idx, len(background_timeline)):
+      if(end > background_timeline[i]['start']):
+        continue
+      result_timeline_json.append({'start': background_timeline[i]['start'], 'end': background_timeline[i]['end'], 'text' : '(' + background_timeline[i]['tag'] + ')'})
+
+  if(clova_timeline_idx < len(clova_timeline)):
+    for i in range(clova_timeline_idx, len(clova_timeline)):
+      if(end > clova_timeline[i]['start']):
+        continue
+      result_timeline_json.append({'start': clova_timeline[i]['start'], 'end': clova_timeline[i]['end'], 'text' : clova_timeline[i]['tag']})
+
+  return json.dumps(result_timeline_json, ensure_ascii=False)
 
 
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
 def lambda_handler(event, context):
 
-    # Get the object from the event and show its content type
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'], encoding='utf-8')
+
     try:
       userFile = key
       userFileName = key.split('.')[0]
+
+      # 메세지큐에 넣을 결과 url
+      userId = key.split('-')[0]
+      s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
+      s3TextUrl = 'https://' + os.environ['text_s3_bucket'] + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
+
+      # video bucket에서 비디오 파일 다운로드
       s3.download_file(bucket, key, '/tmp/' + userFile)
 
-      # 배경음악 분류 관련 스크립트
-      # 파일 저장이 가능한 폴더로 이동
+      # 스프리터로 음원파일 분리
       os.chdir('/tmp')
       separator = Separator("spleeter:2stems") 
       separator.separate_to_file(userFile, "")
-
-      # 원래 폴더로 이동
-      os.chdir('/var/task')
-      
-      # spleeter 결과 폴더
-      # 배경음악 파일                                                  
+      os.chdir('/var/task')                                         
       accompanimentSrc = '/tmp/' + userFileName + '/accompaniment.wav'
-      # 사람 음성 파일
       vocalsSrc = '/tmp/' + userFileName + '/vocals.wav'
+
+      # 분리된 배경음악 타임라인 추출
       background_timeline = make_transcript(accompanimentSrc, userFileName)
 
+      # 스플리터로 인해 생성된 파일 제거
       os.remove('/tmp/' + userFile)
       os.remove(accompanimentSrc)
       os.remove(vocalsSrc)
       os.rmdir('/tmp/' + userFileName)
 
-      # 사람 대사 관련 스크립트
-      s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
-      text = ClovaSpeechClient().req_url(s3VideoUrl, language="ko-KR", completion="sync")
-      clova = json.loads(text)
-
-      # 클로바 데이터 타임라인으로 정리하는 코드
-      clova_timeline = []
-      
-      for i in clova['segments']:
-        start = i['start'] * 0.001
-        end = i['end'] * 0.001
-        text = i['text']
-        clova_timeline.append({'start': start, 'end': end, 'tag' : text})
+      # 클로바 호출 및 데이터 전처리 및 타임라인 추출
+      clova = invoke_clova(s3VideoUrl)
+      clova_timeline = preprocess_clova(clova)
 
       # 클로바와 배경음악 타임라인 정리하는 코드
-      result_timeline_json = []
-      background_timeline_idx = 0
-      clova_timeline_idx = 0
-      start = 0
-      end = 0
-      
-      while(True):
-        text = ''
-        if(background_timeline[background_timeline_idx]['start'] < clova_timeline[clova_timeline_idx]['start']):
-          start = background_timeline[background_timeline_idx]['start']
-        else:
-          start = clova_timeline[clova_timeline_idx]['start']
+      timeline_json = make_timeline(background_timeline, clova_timeline)
 
-        if(background_timeline[background_timeline_idx]['end'] < clova_timeline[clova_timeline_idx]['end']):
-          end = background_timeline[background_timeline_idx]['end']
-          text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
-          background_timeline_idx = background_timeline_idx + 1
-        else:
-          end = clova_timeline[clova_timeline_idx]['end']
-          text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
-          clova_timeline_idx = clova_timeline_idx + 1
+      # 결과 text bucket에 저장
+      s3.put_object(Body=timeline_json, Bucket=text_s3_bucket, Key=userFileName + ".json")
 
-        result_timeline_json.append({'start': start, 'end': end, 'text' : text})
-        if(background_timeline_idx == len(background_timeline) or clova_timeline_idx == len(clova_timeline)):
-          break
-
-      if(background_timeline_idx < len(background_timeline)):
-        for i in range(background_timeline_idx, len(background_timeline)):
-          if(end > background_timeline[i]['start']):
-            continue
-          result_timeline_json.append({'start': background_timeline[i]['start'], 'end': background_timeline[i]['end'], 'text' : '(' + background_timeline[i]['tag'] + ')'})
-
-      if(clova_timeline_idx < len(clova_timeline)):
-        for i in range(clova_timeline_idx, len(clova_timeline)):
-          if(end > clova_timeline[i]['start']):
-            continue
-          result_timeline_json.append({'start': clova_timeline[i]['start'], 'end': clova_timeline[i]['end'], 'text' : clova_timeline[i]['tag']})
-
-      print(result_timeline_json)
       return True
       
     except Exception as e:
@@ -235,7 +246,6 @@ class ClovaSpeechClient:
                 wordAlignment=True, fullText=True, script='', diarization=None, keywordExtraction=None, groupByAudio=False):
         # 호출 예시
         # ClovaSpeechClient().req_url("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", "ko-KR", "sync")
-
 
         request_body = {
             'url': url, 
