@@ -165,8 +165,9 @@ def lambda_handler(event, context):
       # 사람 대사 관련 스크립트
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
       text = ClovaSpeechClient().req_url(s3VideoUrl, language="ko-KR", completion="sync")
-      # 예시
-      #text = ClovaSpeechClient().req_url('http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', "ko-KR", "sync")
+      
+      tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다", 'background_sound': "배경음악"}
+      
       clova = json.loads(text)
       clova_timeline = []
       
