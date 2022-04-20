@@ -104,6 +104,7 @@ def sound_with_json(audio_file, json, fileName):
   for idx, p in enumerate(category):
     nonsilent_json[idx]['tag'] = category[idx]   
 
+  # 같은 태그 합치는 코드
   final_json = []
   for i in range(len(nonsilent_json) - 1):
     if (nonsilent_json[i]['end'] != nonsilent_json[i+1]['start']):
@@ -166,8 +167,15 @@ def lambda_handler(event, context):
       text = ClovaSpeechClient().req_url(s3VideoUrl, language="ko-KR", completion="sync")
       # 예시
       #text = ClovaSpeechClient().req_url('http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', "ko-KR", "sync")
-      dict = json.loads(text)
-      print(dict)
+      clova = json.loads(text)
+      clova_timeline = []
+      
+      for j in clova['segments']:
+        start = j['start'] * 0.001
+        end = j['end'] * 0.001
+        text = j['text']
+        clova_timeline.append({'start': start, 'end': end, 'tag' : text})
+
       return result_json
       
     except Exception as e:
