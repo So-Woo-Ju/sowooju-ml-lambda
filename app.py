@@ -115,9 +115,12 @@ def sound_with_json(audio_file, json, fileName):
           else:
             nonsilent_json[i+1]['start'] = nonsilent_json[i]['start']
   final_json.append(nonsilent_json[len(nonsilent_json) - 1])
+  
+  tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다", 'background_sound': "배경음악"}
+  for i in final_json:
+    i['tag'] = tag[i['tag']]
 
   print(final_json)
-
   return final_json
 
 def make_transcript(audio_file_path, fileName):
@@ -165,24 +168,62 @@ def lambda_handler(event, context):
       # 사람 대사 관련 스크립트
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
       text = ClovaSpeechClient().req_url(s3VideoUrl, language="ko-KR", completion="sync")
-      
-      tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다", 'background_sound': "배경음악"}
-      
       clova = json.loads(text)
+
+      # 클로바 데이터 타임라인으로 정리하는 코드
       clova_timeline = []
       
-      for j in clova['segments']:
-        start = j['start'] * 0.001
-        end = j['end'] * 0.001
-        text = j['text']
+      for i in clova['segments']:
+        start = i['start'] * 0.001
+        end = i['end'] * 0.001
+        text = i['text']
         clova_timeline.append({'start': start, 'end': end, 'tag' : text})
 
-      return result_json
+      # 클로바와 배경음악 타임라인 정리하는 코드
+      result_timeline_json = []
+      background_timeline_idx = 0
+      clova_timeline_idx = 0
+      start = 0
+      end = 0
+      
+      while(True):
+        text = ''
+        if(background_timeline[background_timeline_idx]['start'] < clova_timeline[clova_timeline_idx]['start']):
+          start = background_timeline[background_timeline_idx]['start']
+        else:
+          start = clova_timeline[clova_timeline_idx]['start']
+
+        if(background_timeline[background_timeline_idx]['end'] < clova_timeline[clova_timeline_idx]['end']):
+          end = background_timeline[background_timeline_idx]['end']
+          text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
+          background_timeline_idx = background_timeline_idx + 1
+        else:
+          end = clova_timeline[clova_timeline_idx]['end']
+          text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
+          clova_timeline_idx = clova_timeline_idx + 1
+
+        result_timeline_json.append({'start': start, 'end': end, 'text' : text})
+        if(background_timeline_idx == len(background_timeline) or clova_timeline_idx == len(clova_timeline)):
+          break
+
+      if(background_timeline_idx < len(background_timeline)):
+        for i in range(background_timeline_idx, len(background_timeline)):
+          if(end > background_timeline[i]['start']):
+            continue
+          result_timeline_json.append({'start': background_timeline[i]['start'], 'end': background_timeline[i]['end'], 'text' : '(' + background_timeline[i]['tag'] + ')'})
+
+      if(clova_timeline_idx < len(clova_timeline)):
+        for i in range(clova_timeline_idx, len(clova_timeline)):
+          if(end > clova_timeline[i]['start']):
+            continue
+          result_timeline_json.append({'start': clova_timeline[i]['start'], 'end': clova_timeline[i]['end'], 'text' : clova_timeline[i]['tag']})
+
+      print(result_timeline_json)
+      return True
       
     except Exception as e:
       print(e)
       raise e
-
 
 class ClovaSpeechClient:
       # Clova Speech invoke URL
