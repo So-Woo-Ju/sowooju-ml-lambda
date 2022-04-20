@@ -109,18 +109,17 @@ def sound_with_json(audio_file, json, fileName):
   for i in range(len(nonsilent_json) - 1):
     if (nonsilent_json[i]['end'] != nonsilent_json[i+1]['start']):
       final_json.append(nonsilent_json[i])
+    else:
+      if (nonsilent_json[i]['tag'] != nonsilent_json[i+1]['tag']):
+        final_json.append(nonsilent_json[i])
       else:
-        if (nonsilent_json[i]['tag'] != nonsilent_json[i+1]['tag']):
-          final_json.append(nonsilent_json[i])
-          else:
-            nonsilent_json[i+1]['start'] = nonsilent_json[i]['start']
+        nonsilent_json[i+1]['start'] = nonsilent_json[i]['start']
   final_json.append(nonsilent_json[len(nonsilent_json) - 1])
   
   tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다", 'background_sound': "배경음악"}
   for i in final_json:
     i['tag'] = tag[i['tag']]
 
-  print(final_json)
   return final_json
 
 def make_transcript(audio_file_path, fileName):
@@ -158,7 +157,7 @@ def lambda_handler(event, context):
       accompanimentSrc = '/tmp/' + userFileName + '/accompaniment.wav'
       # 사람 음성 파일
       vocalsSrc = '/tmp/' + userFileName + '/vocals.wav'
-      background_timeline = json.dumps(make_transcript(accompanimentSrc, userFileName))
+      background_timeline = make_transcript(accompanimentSrc, userFileName)
 
       os.remove('/tmp/' + userFile)
       os.remove(accompanimentSrc)
