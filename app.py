@@ -104,10 +104,20 @@ def sound_with_json(audio_file, json, fileName):
   for idx, p in enumerate(category):
     nonsilent_json[idx]['tag'] = category[idx]   
 
-  for j in nonsilent_json:
-    print(j)
+  final_json = []
+  for i in range(len(nonsilent_json) - 1):
+    if (nonsilent_json[i]['end'] != nonsilent_json[i+1]['start']):
+      final_json.append(nonsilent_json[i])
+      else:
+        if (nonsilent_json[i]['tag'] != nonsilent_json[i+1]['tag']):
+          final_json.append(nonsilent_json[i])
+          else:
+            nonsilent_json[i+1]['start'] = nonsilent_json[i]['start']
+  final_json.append(nonsilent_json[len(nonsilent_json) - 1])
 
-  return {"결과":nonsilent_json}
+  print(final_json)
+
+  return final_json
 
 def make_transcript(audio_file_path, fileName):
 
@@ -144,7 +154,7 @@ def lambda_handler(event, context):
       accompanimentSrc = '/tmp/' + userFileName + '/accompaniment.wav'
       # 사람 음성 파일
       vocalsSrc = '/tmp/' + userFileName + '/vocals.wav'
-      result_json = json.dumps(make_transcript(accompanimentSrc, userFileName))
+      background_timeline = json.dumps(make_transcript(accompanimentSrc, userFileName))
 
       os.remove('/tmp/' + userFile)
       os.remove(accompanimentSrc)
@@ -153,7 +163,6 @@ def lambda_handler(event, context):
 
       # 사람 대사 관련 스크립트
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
-      print(s3VideoUrl)
       text = ClovaSpeechClient().req_url(s3VideoUrl, language="ko-KR", completion="sync")
       # 예시
       #text = ClovaSpeechClient().req_url('http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', "ko-KR", "sync")
