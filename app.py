@@ -5,6 +5,7 @@ from pydub.silence import detect_nonsilent
 import ffmpeg
 import json
 import urllib.parse
+import requests
 
 import tensorflow as tf
 import tensorflow_io as tfio
@@ -116,6 +117,8 @@ def make_transcript(audio_file_path, fileName):
   transcript_json = sound_with_json(normalized_audio, intervals_jsons, fileName) # JSON을 가지고 STT한 결과 추가
   return transcript_json
 
+
+
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
 def lambda_handler(event, context):
 
@@ -127,6 +130,7 @@ def lambda_handler(event, context):
       userFileName = key.split('.')[0]
       s3.download_file(bucket, key, '/tmp/' + userFile)
 
+      # 배경음악 분류 관련 스크립트
       # 파일 저장이 가능한 폴더로 이동
       os.chdir('/tmp')
       separator = Separator("spleeter:2stems") 
@@ -147,7 +151,62 @@ def lambda_handler(event, context):
       os.remove(vocalsSrc)
       os.rmdir('/tmp/' + userFileName)
 
+      # 사람 대사 관련 스크립트
+      s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
+      print(s3VideoUrl)
+      text = ClovaSpeechClient().req_url(s3VideoUrl, language="ko-KR", completion="sync")
+      # 예시
+      #text = ClovaSpeechClient().req_url('http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', "ko-KR", "sync")
+      dict = json.loads(text)
+      print(dict)
       return result_json
+      
     except Exception as e:
       print(e)
       raise e
+
+
+class ClovaSpeechClient:
+      # Clova Speech invoke URL
+    invoke_url = os.environ['invoke_url']
+
+    # Clova Speech secret key
+    secret = os.environ['secret']
+
+    def req_url(self, url, language, completion, callback=None, userdata=None, forbiddens=None, boostings=None, sttEnable=True,
+                wordAlignment=True, fullText=True, script='', diarization=None, keywordExtraction=None, groupByAudio=False):
+        # 호출 예시
+        # ClovaSpeechClient().req_url("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", "ko-KR", "sync")
+
+
+        request_body = {
+            'url': url, 
+            #url 넣어줄때 s3 접근 가능 url 을 넣어줄 것
+            # res = s3_client.list_objects_v2(Bucket=bucket, Prefix=path, MaxKeys=1)
+            # 'Contents' in res
+            # json_value = json.dumps(json.load(res['Body']))
+            'language': language,
+            # 'language': 'ko-KR',
+            # 'language': 'en-US',
+            'completion': completion,
+            'callback': callback,
+            'userdata': userdata,
+            'sttEnable': sttEnable,
+            'wordAlignment': wordAlignment,
+            'fullText': fullText,
+            'script': script,
+            'forbiddens': forbiddens,
+            'boostings': boostings,
+            'diarization': diarization,
+            'keywordExtraction': keywordExtraction,
+            'groupByAudio': groupByAudio,
+        }
+        headers = {
+            'Accept': 'application/json;UTF-8',
+            'Content-Type': 'application/json;UTF-8',
+            'X-CLOVASPEECH-API-KEY': self.secret
+        }
+        res = requests.post(headers=headers,
+                            url=self.invoke_url + '/recognizer/url',
+                            data=json.dumps(request_body).encode('UTF-8'))
+        return res.text
