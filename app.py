@@ -154,9 +154,9 @@ def lambda_handler(event, context):
       # 사람 대사 관련 스크립트
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
       print(s3VideoUrl)
-      text = ClovaSpeechClient().req_url(s3VideoUrl, "ko-KR", "sync")
+      text = ClovaSpeechClient().req_url(s3VideoUrl, language="ko-KR", completion="sync")
       # 예시
-      # text = ClovaSpeechClient().req_url('http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', "ko-KR", "sync")
+      #text = ClovaSpeechClient().req_url('http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', "ko-KR", "sync")
       dict = json.loads(text)
       print(dict)
       return result_json
@@ -172,10 +172,12 @@ class ClovaSpeechClient:
 
     # Clova Speech secret key
     secret = os.environ['secret']
+
     def req_url(self, url, language, completion, callback=None, userdata=None, forbiddens=None, boostings=None, sttEnable=True,
                 wordAlignment=True, fullText=True, script='', diarization=None, keywordExtraction=None, groupByAudio=False):
         # 호출 예시
         # ClovaSpeechClient().req_url("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", "ko-KR", "sync")
+
 
         request_body = {
             'url': url, 
@@ -183,7 +185,7 @@ class ClovaSpeechClient:
             # res = s3_client.list_objects_v2(Bucket=bucket, Prefix=path, MaxKeys=1)
             # 'Contents' in res
             # json_value = json.dumps(json.load(res['Body']))
-            'language': 'language',
+            'language': language,
             # 'language': 'ko-KR',
             # 'language': 'en-US',
             'completion': completion,
