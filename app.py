@@ -142,12 +142,12 @@ def preprocess_clova(clova):
     clova_timeline.append({'start': start, 'end': end, 'tag' : text})
   return clova_timeline
 
-
 def make_timeline(background_timeline, clova_timeline):
   result_timeline_json = []
   background_timeline_idx = 0
   clova_timeline_idx = 0
   start = 0
+  pre_start = 0
   end = 0
   while(True):
     text = ''
@@ -158,12 +158,19 @@ def make_timeline(background_timeline, clova_timeline):
 
     if(background_timeline[background_timeline_idx]['end'] < clova_timeline[clova_timeline_idx]['end']):
       end = background_timeline[background_timeline_idx]['end']
-      text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
+      if(end < clova_timeline[clova_timeline_idx]['start']):
+        text = '(' + background_timeline[background_timeline_idx]['tag'] + ')'
+      else:
+        text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
       background_timeline_idx = background_timeline_idx + 1
     else:
       end = clova_timeline[clova_timeline_idx]['end']
-      text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
+      if(end < background_timeline[background_timeline_idx]['start']):
+        text = clova_timeline[clova_timeline_idx]['tag']
+      else:
+        text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
       clova_timeline_idx = clova_timeline_idx + 1
+    pre_start = start
 
     result_timeline_json.append({'start': start, 'end': end, 'text' : text})
     if(background_timeline_idx == len(background_timeline) or clova_timeline_idx == len(clova_timeline)):
@@ -180,8 +187,23 @@ def make_timeline(background_timeline, clova_timeline):
       if(end > clova_timeline[i]['start']):
         continue
       result_timeline_json.append({'start': clova_timeline[i]['start'], 'end': clova_timeline[i]['end'], 'text' : clova_timeline[i]['tag']})
+  
+  for i in range(1, len(result_timeline_json)):
+    if(result_timeline_json[i - 1]['end'] > result_timeline_json[i]['start']):
+      result_timeline_json[i]['start'] = result_timeline_json[i - 1]['end']
 
-  return json.dumps(result_timeline_json, ensure_ascii=False)
+  result_timeline_json_delete_overlap = []
+  for i in range(len(result_timeline_json) - 1):
+    if (result_timeline_json[i]['end'] != result_timeline_json[i+1]['start']):
+      result_timeline_json_delete_overlap.append(result_timeline_json[i])
+    else:
+      if (result_timeline_json[i]['text'] != result_timeline_json[i+1]['text']):
+        result_timeline_json_delete_overlap.append(result_timeline_json[i])
+      else:
+        result_timeline_json[i+1]['start'] = result_timeline_json[i]['start']
+  result_timeline_json_delete_overlap.append(result_timeline_json[len(result_timeline_json) - 1])
+
+  return json.dumps(result_timeline_json_delete_overlap, ensure_ascii=False)
 
 
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
@@ -193,11 +215,12 @@ def lambda_handler(event, context):
     try:
       userFile = key
       userFileName = key.split('.')[0]
+      text_s3_bucket = os.environ['text_s3_bucket']
 
       # 메세지큐에 넣을 결과 url
       userId = key.split('-')[0]
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
-      s3TextUrl = 'https://' + os.environ['text_s3_bucket'] + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
+      s3TextUrl = 'https://' + text_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
 
       # video bucket에서 비디오 파일 다운로드
       s3.download_file(bucket, key, '/tmp/' + userFile)
@@ -225,6 +248,10 @@ def lambda_handler(event, context):
 
       # 클로바와 배경음악 타임라인 정리하는 코드
       timeline_json = make_timeline(background_timeline, clova_timeline)
+
+      print(background_timeline)
+      print(clova_timeline)
+      print(timeline_json)
 
       # 결과 text bucket에 저장
       s3.put_object(Body=timeline_json, Bucket=text_s3_bucket, Key=userFileName + ".json")
