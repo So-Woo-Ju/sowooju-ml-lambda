@@ -116,7 +116,7 @@ def sound_with_json(audio_file, json, fileName):
         nonsilent_json[i+1]['start'] = nonsilent_json[i]['start']
   final_json.append(nonsilent_json[len(nonsilent_json) - 1])
   
-  tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다", 'background_sound': "배경음악"}
+  tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다", 'background_sound': ""}
   for i in final_json:
     i['tag'] = tag[i['tag']]
 
