@@ -159,8 +159,13 @@ def make_timeline(background_timeline, clova_timeline):
     if(background_timeline[background_timeline_idx]['end'] < clova_timeline[clova_timeline_idx]['end']):
       end = background_timeline[background_timeline_idx]['end']
       if(end < clova_timeline[clova_timeline_idx]['start']):
+        if(background_timeline[background_timeline_idx]['tag'] == ""):
+          continue 
         text = '(' + background_timeline[background_timeline_idx]['tag'] + ')'
       else:
+        if(background_timeline[background_timeline_idx]['tag'] == ""):
+          text = clova_timeline[clova_timeline_idx]['tag']
+          continue         
         text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
       background_timeline_idx = background_timeline_idx + 1
     else:
@@ -168,6 +173,9 @@ def make_timeline(background_timeline, clova_timeline):
       if(end < background_timeline[background_timeline_idx]['start']):
         text = clova_timeline[clova_timeline_idx]['tag']
       else:
+        if(background_timeline[background_timeline_idx]['tag'] == ""):
+          text = clova_timeline[clova_timeline_idx]['tag']
+          continue  
         text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
       clova_timeline_idx = clova_timeline_idx + 1
     pre_start = start
