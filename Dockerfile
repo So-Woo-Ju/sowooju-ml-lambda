@@ -35,6 +35,7 @@ RUN pip install lambda-multiprocessing
 RUN pip install librosa
 RUN pip install SoundFile
 RUN pip install spleeter
+RUN pip install webvtt
 
 # ffmepg 파일 복사
 COPY ffmpeg.tar.xz .
