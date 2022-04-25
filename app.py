@@ -1,15 +1,18 @@
 from pydub import AudioSegment
 from pydub.silence import detect_silence
 from pydub.silence import detect_nonsilent
+from webvtt import WebVTT, Caption
 
 import ffmpeg
 import json
 import urllib.parse
 import requests
+import webvtt
 
 import tensorflow as tf
 import tensorflow_io as tfio
 import boto3
+import datetime
 import os
 
 import spleeter
@@ -214,6 +217,24 @@ def make_timeline(background_timeline, clova_timeline):
   return json.dumps(result_timeline_json_delete_overlap, ensure_ascii=False)
 
 
+def make_vtt(text):
+    data = json.load(text)
+    vtt = WebVTT()
+
+    for line in data:
+        fmt = '%H:%M:%S.%f'
+        start_time = datetime.datetime.fromtimestamp(line['start'], tz=datetime.timezone.utc).strftime(fmt)[:-3]
+        end_time = datetime.datetime.fromtimestamp(line['end'], tz=datetime.timezone.utc).strftime(fmt)[:-3]
+        caption = Caption(start_time, end_time, line['text'])
+
+        vtt.captions.append(caption)
+
+    os.chdir('/tmp')
+    res = vtt.save('temp.vtt')
+
+    return '/tmp/temp.vtt'
+
+
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
 def lambda_handler(event, context):
 
@@ -224,11 +245,13 @@ def lambda_handler(event, context):
       userFile = key
       userFileName = key.split('.')[0]
       text_s3_bucket = os.environ['text_s3_bucket']
+      caption_s3_bucket = os.environ['caption_s3_bucket']
 
       # 메세지큐에 넣을 결과 url
       userId = key.split('-')[0]
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
       s3TextUrl = 'https://' + text_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
+      s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
 
       # video bucket에서 비디오 파일 다운로드
       s3.download_file(bucket, key, '/tmp/' + userFile)
@@ -257,12 +280,16 @@ def lambda_handler(event, context):
       # 클로바와 배경음악 타임라인 정리하는 코드
       timeline_json = make_timeline(background_timeline, clova_timeline)
 
-      print(background_timeline)
-      print(clova_timeline)
       print(timeline_json)
+
+      #vtt 파일 생성
+      caption = make_vtt(timeline_json)
 
       # 결과 text bucket에 저장
       s3.put_object(Body=timeline_json, Bucket=text_s3_bucket, Key=userFileName + ".json")
+      s3.put_object(Body=caption, Bucket=caption_s3_bucket, Key=userFileName + ".vtt")
+
+      os.remove(caption)
 
       return True
       
