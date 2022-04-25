@@ -26,7 +26,6 @@ def match_target_amplitude(sound, target_dBFS):
     change_in_dBFS = target_dBFS - sound.dBFS
     return sound.apply_gain(change_in_dBFS)
 
-# 추임새/비추임새 판정
 def load_wav_16k_mono(filename):
     """ Load a WAV file, convert it to a float tensor, resample to 16 kHz single-channel audio. """
     file_contents = tf.io.read_file(filename)
@@ -119,11 +118,16 @@ def sound_with_json(audio_file, json, fileName):
         nonsilent_json[i+1]['start'] = nonsilent_json[i]['start']
   final_json.append(nonsilent_json[len(nonsilent_json) - 1])
   
-  tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다", 'background_sound': ""}
+  final_json_delete_background_sound = []
+  tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다"}
   for i in final_json:
+    if(i['tag'] != 'background_sound'):
+      final_json_delete_background_sound.append(i)
+
+  for i in final_json_delete_background_sound:
     i['tag'] = tag[i['tag']]
 
-  return final_json
+  return final_json_delete_background_sound
 
 def make_transcript(audio_file_path, fileName):
   audio = AudioSegment.from_file(audio_file_path)
@@ -162,13 +166,8 @@ def make_timeline(background_timeline, clova_timeline):
     if(background_timeline[background_timeline_idx]['end'] < clova_timeline[clova_timeline_idx]['end']):
       end = background_timeline[background_timeline_idx]['end']
       if(end < clova_timeline[clova_timeline_idx]['start']):
-        if(background_timeline[background_timeline_idx]['tag'] == ""):
-          continue 
         text = '(' + background_timeline[background_timeline_idx]['tag'] + ')'
       else:
-        if(background_timeline[background_timeline_idx]['tag'] == ""):
-          text = clova_timeline[clova_timeline_idx]['tag']
-          continue         
         text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
       background_timeline_idx = background_timeline_idx + 1
     else:
@@ -176,9 +175,6 @@ def make_timeline(background_timeline, clova_timeline):
       if(end < background_timeline[background_timeline_idx]['start']):
         text = clova_timeline[clova_timeline_idx]['tag']
       else:
-        if(background_timeline[background_timeline_idx]['tag'] == ""):
-          text = clova_timeline[clova_timeline_idx]['tag']
-          continue  
         text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
       clova_timeline_idx = clova_timeline_idx + 1
     pre_start = start
@@ -205,6 +201,8 @@ def make_timeline(background_timeline, clova_timeline):
 
   result_timeline_json_delete_overlap = []
   for i in range(len(result_timeline_json) - 1):
+    if(result_timeline_json[i]['text'] == ""):
+      continue
     if (result_timeline_json[i]['end'] != result_timeline_json[i+1]['start']):
       result_timeline_json_delete_overlap.append(result_timeline_json[i])
     else:
@@ -213,9 +211,7 @@ def make_timeline(background_timeline, clova_timeline):
       else:
         result_timeline_json[i+1]['start'] = result_timeline_json[i]['start']
   result_timeline_json_delete_overlap.append(result_timeline_json[len(result_timeline_json) - 1])
-
   return json.dumps(result_timeline_json_delete_overlap, ensure_ascii=False)
-
 
 def make_vtt(text):
     data = json.load(text)
@@ -233,7 +229,6 @@ def make_vtt(text):
     res = vtt.save('temp.vtt')
 
     return '/tmp/temp.vtt'
-
 
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
 def lambda_handler(event, context):
@@ -279,7 +274,6 @@ def lambda_handler(event, context):
 
       # 클로바와 배경음악 타임라인 정리하는 코드
       timeline_json = make_timeline(background_timeline, clova_timeline)
-
       print(timeline_json)
 
       #vtt 파일 생성
