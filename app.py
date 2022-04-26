@@ -1,15 +1,18 @@
 from pydub import AudioSegment
 from pydub.silence import detect_silence
 from pydub.silence import detect_nonsilent
+from webvtt import WebVTT, Caption
 
 import ffmpeg
 import json
 import urllib.parse
 import requests
+import webvtt
 
 import tensorflow as tf
 import tensorflow_io as tfio
 import boto3
+import datetime
 import os
 
 import spleeter
@@ -23,7 +26,6 @@ def match_target_amplitude(sound, target_dBFS):
     change_in_dBFS = target_dBFS - sound.dBFS
     return sound.apply_gain(change_in_dBFS)
 
-# 추임새/비추임새 판정
 def load_wav_16k_mono(filename):
     """ Load a WAV file, convert it to a float tensor, resample to 16 kHz single-channel audio. """
     file_contents = tf.io.read_file(filename)
@@ -116,11 +118,16 @@ def sound_with_json(audio_file, json, fileName):
         nonsilent_json[i+1]['start'] = nonsilent_json[i]['start']
   final_json.append(nonsilent_json[len(nonsilent_json) - 1])
   
-  tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다", 'background_sound': ""}
+  final_json_delete_background_sound = []
+  tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다"}
   for i in final_json:
+    if(i['tag'] != 'background_sound'):
+      final_json_delete_background_sound.append(i)
+
+  for i in final_json_delete_background_sound:
     i['tag'] = tag[i['tag']]
 
-  return final_json
+  return final_json_delete_background_sound
 
 def make_transcript(audio_file_path, fileName):
   audio = AudioSegment.from_file(audio_file_path)
@@ -194,6 +201,8 @@ def make_timeline(background_timeline, clova_timeline):
 
   result_timeline_json_delete_overlap = []
   for i in range(len(result_timeline_json) - 1):
+    if(result_timeline_json[i]['text'] == ""):
+      continue
     if (result_timeline_json[i]['end'] != result_timeline_json[i+1]['start']):
       result_timeline_json_delete_overlap.append(result_timeline_json[i])
     else:
@@ -202,9 +211,25 @@ def make_timeline(background_timeline, clova_timeline):
       else:
         result_timeline_json[i+1]['start'] = result_timeline_json[i]['start']
   result_timeline_json_delete_overlap.append(result_timeline_json[len(result_timeline_json) - 1])
-
   return json.dumps(result_timeline_json_delete_overlap, ensure_ascii=False)
 
+
+def make_vtt(data, userFileName):
+    vtt = WebVTT()
+
+    for line in data:
+        fmt = '%H:%M:%S.%f'
+        start_time = datetime.datetime.fromtimestamp(line['start'], tz=datetime.timezone.utc).strftime(fmt)[:-3]
+        end_time = datetime.datetime.fromtimestamp(line['end'], tz=datetime.timezone.utc).strftime(fmt)[:-3]
+        caption = Caption(start_time, end_time, line['text'])
+
+        vtt.captions.append(caption)
+
+    os.chdir('/tmp')
+    userTempFileSrc = '/tmp/' + userFileName + '-temp.vtt'
+    res = vtt.save(userTempFileSrc)
+
+    return userTempFileSrc
 
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
 def lambda_handler(event, context):
@@ -216,11 +241,13 @@ def lambda_handler(event, context):
       userFile = key
       userFileName = key.split('.')[0]
       text_s3_bucket = os.environ['text_s3_bucket']
+      caption_s3_bucket = os.environ['caption_s3_bucket']
 
       # 메세지큐에 넣을 결과 url
       userId = key.split('-')[0]
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
       s3TextUrl = 'https://' + text_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
+      s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
 
       # video bucket에서 비디오 파일 다운로드
       s3.download_file(bucket, key, '/tmp/' + userFile)
@@ -248,13 +275,17 @@ def lambda_handler(event, context):
 
       # 클로바와 배경음악 타임라인 정리하는 코드
       timeline_json = make_timeline(background_timeline, clova_timeline)
-
-      print(background_timeline)
-      print(clova_timeline)
       print(timeline_json)
+
+      #vtt 파일 생성
+      timeline = json.loads(timeline_json)
+      caption = make_vtt(timeline, userFileName)
 
       # 결과 text bucket에 저장
       s3.put_object(Body=timeline_json, Bucket=text_s3_bucket, Key=userFileName + ".json")
+      s3.upload_file(caption, caption_s3_bucket, userFileName + ".vtt")
+
+      os.remove(caption)
 
       return True
       
