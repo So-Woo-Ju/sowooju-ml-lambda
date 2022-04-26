@@ -214,7 +214,7 @@ def make_timeline(background_timeline, clova_timeline):
   return json.dumps(result_timeline_json_delete_overlap, ensure_ascii=False)
 
 
-def make_vtt(data):
+def make_vtt(data, userFileName):
     vtt = WebVTT()
 
     for line in data:
@@ -226,9 +226,10 @@ def make_vtt(data):
         vtt.captions.append(caption)
 
     os.chdir('/tmp')
-    res = vtt.save('temp.vtt')
+    userTempFileSrc = '/tmp/' + userFileName + '-temp.vtt'
+    res = vtt.save(userTempFileSrc)
 
-    return '/tmp/temp.vtt'
+    return userTempFileSrc
 
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
 def lambda_handler(event, context):
@@ -273,16 +274,12 @@ def lambda_handler(event, context):
       clova_timeline = preprocess_clova(clova)
 
       # 클로바와 배경음악 타임라인 정리하는 코드
-      print('start make_timeline')
       timeline_json = make_timeline(background_timeline, clova_timeline)
       print(timeline_json)
 
       #vtt 파일 생성
-      print('start make_vtt')
       timeline = json.loads(timeline_json)
-      caption = make_vtt(timeline)
-
-      print(caption)
+      caption = make_vtt(timeline, userFileName)
 
       # 결과 text bucket에 저장
       s3.put_object(Body=timeline_json, Bucket=text_s3_bucket, Key=userFileName + ".json")
