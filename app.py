@@ -286,7 +286,7 @@ def lambda_handler(event, context):
 
       # 결과 text bucket에 저장
       s3.put_object(Body=timeline_json, Bucket=text_s3_bucket, Key=userFileName + ".json")
-      s3.put_object(Body=caption, Bucket=caption_s3_bucket, Key=userFileName + ".vtt")
+      s3.upload_file(caption, caption_s3_bucket, userFileName + ".vtt")
 
       os.remove(caption)
 
