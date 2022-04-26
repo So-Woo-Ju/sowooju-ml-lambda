@@ -213,8 +213,8 @@ def make_timeline(background_timeline, clova_timeline):
   result_timeline_json_delete_overlap.append(result_timeline_json[len(result_timeline_json) - 1])
   return json.dumps(result_timeline_json_delete_overlap, ensure_ascii=False)
 
-def make_vtt(text):
-    data = json.load(text)
+
+def make_vtt(data):
     vtt = WebVTT()
 
     for line in data:
@@ -273,11 +273,16 @@ def lambda_handler(event, context):
       clova_timeline = preprocess_clova(clova)
 
       # 클로바와 배경음악 타임라인 정리하는 코드
+      print('start make_timeline')
       timeline_json = make_timeline(background_timeline, clova_timeline)
       print(timeline_json)
 
       #vtt 파일 생성
-      caption = make_vtt(timeline_json)
+      print('start make_vtt')
+      timeline = json.loads(timeline_json)
+      caption = make_vtt(timeline)
+
+      print(caption)
 
       # 결과 text bucket에 저장
       s3.put_object(Body=timeline_json, Bucket=text_s3_bucket, Key=userFileName + ".json")
