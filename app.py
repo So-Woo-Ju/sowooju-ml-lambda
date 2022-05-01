@@ -8,6 +8,7 @@ import json
 import urllib.parse
 import requests
 import webvtt
+import cv2
 
 import tensorflow as tf
 import tensorflow_io as tfio
@@ -231,6 +232,21 @@ def make_vtt(data, userFileName):
 
     return userTempFileSrc
 
+def make_thumbnail(video, userFileName):
+    vidcap = cv2.VideoCapture(video);
+    # fps = vidcap.get(cv2.CAP_PROP_FPS)
+
+    while(vidcap.isOpened()):
+      ret, image = vidcap.read()
+  
+      if(int(vidcap.get(1)) % 100 == 0):
+        tempThumbnailSrc = '/tmp/' + userFileName + '-temp.jpg'
+        cv2.imwrite(tempThumbnailSrc, image)
+        print('Saved frame.jpg')
+        break
+
+    return tempThumbnailSrc
+
 # lambda 실행 시, lambda_handler가 먼저 실행됩니다.
 def lambda_handler(event, context):
 
@@ -240,12 +256,14 @@ def lambda_handler(event, context):
     try:
       userFile = key
       userFileName = key.split('.')[0]
+      thumbnail_s3_bucket = os.environ['thumbnail_s3_bucket']
       text_s3_bucket = os.environ['text_s3_bucket']
       caption_s3_bucket = os.environ['caption_s3_bucket']
 
       # 메세지큐에 넣을 결과 url
       userId = key.split('-')[0]
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
+      s3ThumbnailUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + '.jpg'
       s3TextUrl = 'https://' + text_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
       s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
 
@@ -256,6 +274,10 @@ def lambda_handler(event, context):
       os.chdir('/tmp')
       separator = Separator("spleeter:2stems") 
       separator.separate_to_file(userFile, "")
+
+      # thumbanil 생성
+      thumbnail = make_thumbnail(userFile, userFileName)
+
       os.chdir('/var/task')                                         
       accompanimentSrc = '/tmp/' + userFileName + '/accompaniment.wav'
       vocalsSrc = '/tmp/' + userFileName + '/vocals.wav'
@@ -277,14 +299,16 @@ def lambda_handler(event, context):
       timeline_json = make_timeline(background_timeline, clova_timeline)
       print(timeline_json)
 
-      #vtt 파일 생성
+      # vtt 파일 생성
       timeline = json.loads(timeline_json)
       caption = make_vtt(timeline, userFileName)
 
       # 결과 text bucket에 저장
+      s3.upload_file(thumbnail, thumbnail_s3_bucket, userFileName + ".jpg")
       s3.put_object(Body=timeline_json, Bucket=text_s3_bucket, Key=userFileName + ".json")
       s3.upload_file(caption, caption_s3_bucket, userFileName + ".vtt")
 
+      os.remove(thumbnail)
       os.remove(caption)
 
       return True
