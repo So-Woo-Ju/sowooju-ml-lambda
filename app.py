@@ -234,7 +234,6 @@ def make_vtt(data, userFileName):
 
 def make_thumbnail(video, userFileName):
     vidcap = cv2.VideoCapture(video);
-    # fps = vidcap.get(cv2.CAP_PROP_FPS)
 
     while(vidcap.isOpened()):
       ret, image = vidcap.read()
@@ -242,7 +241,6 @@ def make_thumbnail(video, userFileName):
       if(int(vidcap.get(1)) % 100 == 0):
         tempThumbnailSrc = '/tmp/' + userFileName + '-temp.jpg'
         cv2.imwrite(tempThumbnailSrc, image)
-        print('Saved frame.jpg')
         break
 
     return tempThumbnailSrc
