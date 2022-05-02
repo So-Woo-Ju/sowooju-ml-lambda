@@ -6,3 +6,4 @@ pydub==0.25.1
 urllib3==1.26.9
 imageio-ffmpeg==0.4.5
 llvmlite==0.38.0
+opencv-python==4.1.2.30
