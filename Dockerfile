@@ -52,8 +52,7 @@ RUN python3.7 -m pip install -r requirements.txt
 RUN pip uninstall -y pillow && CC="cc -mavx2" pip install -U --force-reinstall pillow-simd
 
 # Copy the earlier created app.py file to the container
-COPY app.py ./ 
-COPY trained-model ./
+COPY . ./
 COPY spleeter-2.3.0 ../lang/lib/python3.7/site-packages/
 
 ENV SNDFILE_VERSION=1.0.28
