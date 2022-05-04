@@ -7,8 +7,10 @@ from function.timeline import make_timeline
 from function.caption import make_vtt
 from function.thumbnail import make_thumbnail
 
+
 import json
 import urllib.parse
+import redis
 
 import boto3
 import os
@@ -34,6 +36,10 @@ def lambda_handler(event, context):
       s3ThumbnailUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + '.jpg'
       s3TextUrl = 'https://' + text_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
       s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
+
+      # 메세지큐 전송
+      r = redis.Redis('sowooju-media', host='localhost', port=6379, db=0)
+      r.publish('sowooju-media', message = userId + s3VideoUrl + s3ThumbnailUrl + s3TextUrl + s3CaptionUrl)
 
       # video bucket에서 비디오 파일 다운로드
       s3.download_file(bucket, key, '/tmp/' + userFile)
