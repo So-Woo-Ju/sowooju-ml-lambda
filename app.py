@@ -39,7 +39,15 @@ def lambda_handler(event, context):
 
       # 메세지큐 전송
       r = redis.Redis('sowooju-media', host='redis-so-woo-ju.g0nxmr.0001.apn2.cache.amazonaws.com', port=6379, db=0)
-      r.publish('sowooju-media', message = userId + s3VideoUrl + s3ThumbnailUrl + s3TextUrl + s3CaptionUrl)
+      message = {
+        "user" : userId,
+        "videoUrl" : s3VideoUrl,
+        "captionUrl" : s3CaptionUrl,
+        "textUrl" : s3TextUrl,
+        "thumbnailUrl" : s3ThumbnailUrl
+      }
+      json_message = json.dumps(message)
+      r.publish('sowooju-media', json_message)
 
       # video bucket에서 비디오 파일 다운로드
       s3.download_file(bucket, key, '/tmp/' + userFile)
