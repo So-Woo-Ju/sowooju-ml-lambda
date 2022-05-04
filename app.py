@@ -7,7 +7,6 @@ from function.timeline import make_timeline
 from function.caption import make_vtt
 from function.thumbnail import make_thumbnail
 
-
 import json
 import urllib.parse
 import redis
@@ -38,7 +37,9 @@ def lambda_handler(event, context):
       s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
 
       # 메세지큐 전송
-      r = redis.Redis('sowooju-media', host='redis-so-woo-ju.g0nxmr.0001.apn2.cache.amazonaws.com', port=6379, db=0)
+      redis_host = os.environ['redis_host']
+      redis_port = os.environ['reids_port']
+      r = redis.Redis('sowooju-media', host=redis_host, port=redis_port, db=0)
       message = {
         "user" : userId,
         "videoUrl" : s3VideoUrl,
