@@ -38,7 +38,7 @@ def lambda_handler(event, context):
       s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
 
       # 메세지큐 전송
-      r = redis.Redis('sowooju-media', host='localhost', port=6379, db=0)
+      r = redis.Redis('sowooju-media', host='redis-so-woo-ju.g0nxmr.0001.apn2.cache.amazonaws.com', port=6379, db=0)
       r.publish('sowooju-media', message = userId + s3VideoUrl + s3ThumbnailUrl + s3TextUrl + s3CaptionUrl)
 
       # video bucket에서 비디오 파일 다운로드
