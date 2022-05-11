@@ -9,7 +9,7 @@ from function.thumbnail import make_thumbnail
 
 import json
 import urllib.parse
-import redis
+import requests
 
 import boto3
 import os
@@ -37,9 +37,6 @@ def lambda_handler(event, context):
       s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
 
       # 메세지큐 전송
-      redis_host = os.environ['redis_host']
-      redis_port = os.environ['reids_port']
-      r = redis.Redis('sowooju-media', host=redis_host, port=redis_port, db=0)
       message = {
         "user" : userId,
         "videoUrl" : s3VideoUrl,
@@ -47,8 +44,9 @@ def lambda_handler(event, context):
         "textUrl" : s3TextUrl,
         "thumbnailUrl" : s3ThumbnailUrl
       }
-      json_message = json.dumps(message)
-      r.publish('sowooju-media', json_message)
+      address = os.environ['address']
+      url = address + '/api/v1/media/s3-url'
+      response = requests.post(url, data = message)
 
       # video bucket에서 비디오 파일 다운로드
       s3.download_file(bucket, key, '/tmp/' + userFile)
