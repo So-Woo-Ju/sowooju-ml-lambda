@@ -44,8 +44,9 @@ def lambda_handler(event, context):
         "textUrl" : s3TextUrl,
         "thumbnailUrl" : s3ThumbnailUrl
       }
-  
-      url = 'https://api.so-woo-ju.com/api/v1/media/s3-url'
+      baseUrl = os.environ[baseUrl]
+      postS3Url = os.environ[postS3Url]
+      url = baseUrl + postS3Url
       response = requests.post(url, data = message)
 
       # video bucket에서 비디오 파일 다운로드
