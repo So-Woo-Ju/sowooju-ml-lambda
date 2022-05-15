@@ -9,6 +9,7 @@ from function.thumbnail import make_thumbnail
 
 import json
 import urllib.parse
+import requests
 
 import boto3
 import os
@@ -34,6 +35,19 @@ def lambda_handler(event, context):
       s3ThumbnailUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + '.jpg'
       s3TextUrl = 'https://' + text_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
       s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
+
+      # 메세지큐 전송
+      message = {
+        "user" : userId,
+        "videoUrl" : s3VideoUrl,
+        "captionUrl" : s3CaptionUrl,
+        "textUrl" : s3TextUrl,
+        "thumbnailUrl" : s3ThumbnailUrl
+      }
+      baseUrl = os.environ[baseUrl]
+      postS3Url = os.environ[postS3Url]
+      url = baseUrl + postS3Url
+      response = requests.post(url, data = message)
 
       # video bucket에서 비디오 파일 다운로드
       s3.download_file(bucket, key, '/tmp/' + userFile)
