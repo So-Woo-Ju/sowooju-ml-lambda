@@ -44,8 +44,8 @@ def lambda_handler(event, context):
         "textUrl" : s3TextUrl,
         "thumbnailUrl" : s3ThumbnailUrl
       }
-      baseUrl = os.environ[baseUrl]
-      postS3Url = os.environ[postS3Url]
+      baseUrl = os.environ['baseUrl']
+      postS3Url = os.environ['postS3Url']
       url = baseUrl + postS3Url
       response = requests.post(url, data = message)
 
