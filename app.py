@@ -36,19 +36,6 @@ def lambda_handler(event, context):
       s3TextUrl = 'https://' + text_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
       s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
 
-      # 메세지큐 전송
-      message = {
-        "user" : userId,
-        "videoUrl" : s3VideoUrl,
-        "captionUrl" : s3CaptionUrl,
-        "textUrl" : s3TextUrl,
-        "thumbnailUrl" : s3ThumbnailUrl
-      }
-      baseUrl = os.environ['baseUrl']
-      postS3Url = os.environ['postS3Url']
-      url = baseUrl + postS3Url
-      response = requests.post(url, data = message)
-
       # video bucket에서 비디오 파일 다운로드
       s3.download_file(bucket, key, '/tmp/' + userFile)
 
@@ -88,6 +75,20 @@ def lambda_handler(event, context):
       s3.upload_file(thumbnail, thumbnail_s3_bucket, userFileName + ".jpg")
       s3.put_object(Body=timeline_json, Bucket=text_s3_bucket, Key=userFileName + ".json")
       s3.upload_file(caption, caption_s3_bucket, userFileName + ".vtt")
+
+      # 메세지큐 전송
+      message = {
+        "userId" : int(userId),
+        "videoUrl" : s3VideoUrl,
+        "captionUrl" : s3CaptionUrl,
+        "textUrl" : s3TextUrl,
+        "thumbnailUrl" : s3ThumbnailUrl
+      }
+      baseUrl = os.environ['baseUrl']
+      postS3Url = os.environ['postS3Url']
+      url = baseUrl + postS3Url
+      response = requests.post(url, data = message)
+      print("API 서버 응답 : ", response)
 
       os.remove(thumbnail)
       os.remove(caption)
