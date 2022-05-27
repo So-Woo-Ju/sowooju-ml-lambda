@@ -32,7 +32,7 @@ def lambda_handler(event, context):
       # 메세지큐에 넣을 결과 url
       userId = key.split('-')[0]
       s3VideoUrl = 'https://' + bucket + '.s3.ap-northeast-2.amazonaws.com/' + key
-      s3ThumbnailUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + '.jpg'
+      s3ThumbnailUrl = 'https://' + thumbnail_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + '.jpg'
       s3TextUrl = 'https://' + text_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".json"
       s3CaptionUrl = 'https://' + caption_s3_bucket + '.s3.ap-northeast-2.amazonaws.com/' + userFileName + ".vtt"
 
