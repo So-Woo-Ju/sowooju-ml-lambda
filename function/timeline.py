@@ -22,30 +22,19 @@ def make_timeline(background_timeline, clova_timeline):
   background_timeline_idx = 0
   clova_timeline_idx = 0
   start = 0
-  pre_start = 0
   end = 0
   while(True):
     text = ''
     if(background_timeline[background_timeline_idx]['start'] < clova_timeline[clova_timeline_idx]['start']):
       start = background_timeline[background_timeline_idx]['start']
-    else:
-      start = clova_timeline[clova_timeline_idx]['start']
-
-    if(background_timeline[background_timeline_idx]['end'] < clova_timeline[clova_timeline_idx]['end']):
       end = background_timeline[background_timeline_idx]['end']
-      if(end < clova_timeline[clova_timeline_idx]['start']):
-        text = '(' + background_timeline[background_timeline_idx]['tag'] + ')'
-      else:
-        text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
+      text = '(' + background_timeline[background_timeline_idx]['tag'] + ')'
       background_timeline_idx = background_timeline_idx + 1
     else:
+      start = clova_timeline[clova_timeline_idx]['start']
       end = clova_timeline[clova_timeline_idx]['end']
-      if(end < background_timeline[background_timeline_idx]['start']):
-        text = clova_timeline[clova_timeline_idx]['tag']
-      else:
-        text = '(' + background_timeline[background_timeline_idx]['tag'] + ')' + clova_timeline[clova_timeline_idx]['tag']
+      text = clova_timeline[clova_timeline_idx]['tag']
       clova_timeline_idx = clova_timeline_idx + 1
-    pre_start = start
 
     result_timeline_json.append({'start': start, 'end': end, 'text' : text})
     if(background_timeline_idx == len(background_timeline) or clova_timeline_idx == len(clova_timeline)):
@@ -53,20 +42,12 @@ def make_timeline(background_timeline, clova_timeline):
 
   if(background_timeline_idx < len(background_timeline)):
     for i in range(background_timeline_idx, len(background_timeline)):
-      if(end > background_timeline[i]['start']):
-        continue
       result_timeline_json.append({'start': background_timeline[i]['start'], 'end': background_timeline[i]['end'], 'text' : '(' + background_timeline[i]['tag'] + ')'})
 
   if(clova_timeline_idx < len(clova_timeline)):
     for i in range(clova_timeline_idx, len(clova_timeline)):
-      if(end > clova_timeline[i]['start']):
-        continue
       result_timeline_json.append({'start': clova_timeline[i]['start'], 'end': clova_timeline[i]['end'], 'text' : clova_timeline[i]['tag']})
   
-  for i in range(1, len(result_timeline_json)):
-    if(result_timeline_json[i - 1]['end'] > result_timeline_json[i]['start']):
-      result_timeline_json[i]['start'] = result_timeline_json[i - 1]['end']
-
   result_timeline_json_delete_overlap = []
   for i in range(len(result_timeline_json) - 1):
     if(result_timeline_json[i]['text'] == ""):
@@ -79,6 +60,8 @@ def make_timeline(background_timeline, clova_timeline):
       else:
         result_timeline_json[i+1]['start'] = result_timeline_json[i]['start']
   result_timeline_json_delete_overlap.append(result_timeline_json[len(result_timeline_json) - 1])
+
+  print(result_timeline_json_delete_overlap)
 
   return json.dumps(result_timeline_json_delete_overlap, ensure_ascii=False)
 
