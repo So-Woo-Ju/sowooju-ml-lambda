@@ -67,7 +67,7 @@ docker push <sowooju lambda 이미지 URI>
 
 ## Contributors
 
-|                 주효정                 |                  김소미                  |                    박소현                    |               Sunwoo Ho                |
+|                 주효정                 |                  김소미                  |                    박소현                    |               호선우                |
 | :------------------------------------: | :--------------------------------------: | :------------------------------------------: | :------------------------------------: |
 | [@jhj2713](https://github.com/jhj2713) | [@somii009](https://github.com/somii009) | [@Sohyun-Dev](https://github.com/Sohyun-Dev) | [@hocaron](https://github.com/hocaron) |
 |               React, AI                |               Backend, AI                |                 Backend, AI                  |              Backend, AI               |
