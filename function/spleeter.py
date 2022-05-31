@@ -36,7 +36,7 @@ def predict_filter_type(audio_file, fileName):
 
   testing_wav_data = load_wav_16k_mono(userTempFileSrc)
 
-  my_classes = ['engine', 'breathing', 'dog', 'laughing', 'background_sound']
+  my_classes = ['engine', 'breathing', 'dog', 'laughing', 'clock_tick', 'door_wood_knock', 'keyboard_typing', 'siren', 'footsteps', 'rain', 'thunderstorm', 'wind', 'clock_alarm', 'cat', 'background_sound']
 
   reloaded_results = filter_classifier_model(testing_wav_data)
   os.remove(userTempFileSrc)
@@ -112,7 +112,9 @@ def sound_with_json(audio_file, json, fileName):
   final_json.append(nonsilent_json[len(nonsilent_json) - 1])
   
   final_json_delete_background_sound = []
-  tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다"}
+  tag = {'engine': "엔진소리가 들린다", 'breathing': "숨쉬는 소리가 들린다", 'dog': "개가 짖고 있다", 'laughing': "사람이 웃고 있다", 'clock_tick': "시계 소리가 들린다", 'door_wood_knock': "노크 소리가 들린다", 'keyboard_typing': "키보드 타이핑하는 소리", 'siren': "사이렌 소리", "footsteps": '발자국 소리가 들린다', 'rain': "빗소리가 들린다",
+  'thunderstorm': "천둥 소리가 들린다", 'wind': "바람 소리", 'clock_alarm': "알람이 울린다", 'cat': "고양이 울음 소리가 들린다"}
+  'engine', 'breathing', 'dog', 'laughing', 'clock_tick', 'door_wood_knock', 'keyboard_typing', 'siren', 'footsteps', 'rain', 'thunderstorm', 'wind', 'clock_alarm', 'cat', 'background_sound'
   for i in final_json:
     if(i['tag'] != 'background_sound'):
       final_json_delete_background_sound.append(i)
